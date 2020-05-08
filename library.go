@@ -20,9 +20,9 @@ import (
 )
 
 var (
-	User string
+	User     string
 	Password string
-	DBName string
+	DBName   string
 )
 
 type Library struct {
@@ -40,11 +40,11 @@ type Books struct {
 }
 
 type Users struct {
-	ID          string
-	Name        string
-	Password    string
-	Overdue     int
-	Type        int
+	ID       string
+	Name     string
+	Password string
+	Overdue  int
+	Type     int
 }
 
 type Records struct {
@@ -74,7 +74,7 @@ var ErrPassword = errors.New("Username and password don't match")
 // ConnectDB make connection to local database
 func (lib *Library) ConnectDB() {
 	file, err := os.Open("config.ini")
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
@@ -85,7 +85,7 @@ func (lib *Library) ConnectDB() {
 	Password = scanner.Text()
 	scanner.Scan()
 	DBName = scanner.Text()
-	db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s", User, Password, DBName+"?parseTime=true"))
+	db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s", User, Password, DBName+"?charset=utf8&loc=Asia%2FShanghai&parseTime=true"))
 	if err != nil {
 		panic(err)
 	}
@@ -821,23 +821,23 @@ func (lib *Library) PrintOverdue(overdue int, records []Records) {
 // PrintUnreturned : print users' unreturned list with deadline
 func (lib *Library) PrintUnreturned(records []Records) {
 	type data struct {
-				recordID      string
-				ISBN    string
-				Title     string
-				ExtendTimes int
-				BorrowDate string
-				Deadline string
+		recordID    string
+		ISBN        string
+		Title       string
+		ExtendTimes int
+		BorrowDate  string
+		Deadline    string
 	}
 	var res []data
 	for _, now := range records {
 		Title, _ := lib.QueryBookISBN(now.bookID)
 		res = append(res, data{now.recordID, now.bookID, Title[0].Title, now.extendTimes, now.borrowDate.Format(timeTemplate), now.deadline.Format(timeTemplate)})
 	}
-	
-	if len(res) != 0{
+
+	if len(res) != 0 {
 		t := table.Table(res)
 		fmt.Println(t)
-	}else{
+	} else {
 		fmt.Println("No unreturned book.")
 	}
 }
@@ -848,24 +848,24 @@ func (lib *Library) PrintHistory(records []Records, sign error) {
 		return
 	}
 	type data struct {
-				recordID      string
-				ISBN    string
-				Title     string
-				IsReturned bool
-				ExtendTimes int
-				BorrowDate string
-				ReturnDate string
+		recordID    string
+		ISBN        string
+		Title       string
+		IsReturned  bool
+		ExtendTimes int
+		BorrowDate  string
+		ReturnDate  string
 	}
 	var ss []data
 	for _, now := range records {
 		Title, _ := lib.QueryBookISBN(now.bookID)
 		var tmp string
-		if !now.returnDate.Valid{
+		if !now.returnDate.Valid {
 			tmp = "NULL"
 		} else {
 			tmp = now.returnDate.Time.Format(timeTemplate)
 		}
-		ss = append(ss,	data{now.recordID, now.bookID, Title[0].Title, now.IsReturned, now.extendTimes, now.borrowDate.Format(timeTemplate), tmp})
+		ss = append(ss, data{now.recordID, now.bookID, Title[0].Title, now.IsReturned, now.extendTimes, now.borrowDate.Format(timeTemplate), tmp})
 	}
 
 	t := table.Table(ss)
