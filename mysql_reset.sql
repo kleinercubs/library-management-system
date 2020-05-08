@@ -1,0 +1,39 @@
+DROP TABLE IF EXISTS Recordlist;
+DROP TABLE IF EXISTS Booklist;
+DROP TABLE IF EXISTS Userlist;
+
+CREATE TABLE IF NOT EXISTS Booklist(
+	title VARCHAR(256) NOT NULL,
+	ISBN VARCHAR(16) UNIQUE PRIMARY KEY,
+	author VARCHAR(256) NOT NULL,
+	publisher VARCHAR(256) NOT NULL,
+	stock INT NOT NULL,
+	available INT NOT NULL,
+	removeInfo TEXT,
+	CHECK (stock >= available AND stock >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS Userlist(
+	id VARCHAR(16) PRIMARY KEY,
+	name VARCHAR(256) NOT NULL,
+	password VARCHAR(256) NOT NULL,
+	overdue INT NOT NULL DEFAULT 0,
+	type INT NOT NULL
+);
+
+INSERT INTO `Userlist`
+VALUES ('root','admin','root',0,0);
+
+CREATE TABLE IF NOT EXISTS Recordlist(
+	record_id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	book_id VARCHAR(16) NOT NULL,
+	user_id VARCHAR(16) NOT NULL,
+	IsReturned BOOLEAN NOT NULL DEFAULT FALSE,
+	borrow_date DATETIME NOT NULL,
+	return_date DATETIME,
+	deadline DATETIME NOT NULL,
+	extendtimes INT NOT NULL,
+	FOREIGN KEY (book_id) REFERENCES Booklist(ISBN),
+	FOREIGN KEY (user_id) REFERENCES Userlist(id),
+	CHECK (deadline >= borrow_date)
+)AUTO_INCREMENT=1;
