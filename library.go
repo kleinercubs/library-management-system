@@ -19,10 +19,10 @@ import (
 	"github.com/modood/table"
 )
 
-const (
-	User     = "IDBS-2020"
-	Password = "IDBS-2020"
-	DBName   = "ass3"
+var (
+	User string
+	Password string
+	DBName string
 )
 
 type Library struct {
@@ -58,6 +58,7 @@ type Records struct {
 	extendTimes int
 }
 
+var help string
 var timeTemplate = "2006/01/02 15:04:05"
 var ErrAllRemoved = errors.New("All have been removed.")
 var ErrUserExists = errors.New("User account already exists.")
@@ -72,6 +73,18 @@ var ErrPassword = errors.New("Username and password don't match")
 
 // ConnectDB make connection to local database
 func (lib *Library) ConnectDB() {
+	file, err := os.Open("config.ini")
+	if err != nil{
+		log.Fatal(err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	scanner.Scan()
+	User = scanner.Text()
+	scanner.Scan()
+	Password = scanner.Text()
+	scanner.Scan()
+	DBName = scanner.Text()
 	db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s", User, Password, DBName+"?parseTime=true"))
 	if err != nil {
 		panic(err)
@@ -132,7 +145,6 @@ func (lib *Library) CheckUserExists(userid string) error {
 func (lib *Library) CheckBookISBN(err error) error {
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Println(ErrBookNotExists)
 			return ErrBookNotExists
 		}
 		return err
@@ -157,7 +169,6 @@ func (lib *Library) CheckBookExists(ISBN string) error {
 func (lib *Library) CheckRecordID(err error) error {
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Println(ErrNotBorrowed)
 			return ErrNotBorrowed
 		}
 		return err
@@ -232,7 +243,7 @@ func (lib *Library) AddUser(user Users) error {
 
 }
 
-// IdentifyUser : to identify the user
+// IdentifyUser : to identify the user by the id and password
 func (lib *Library) IdentifyUser(userid, password string) (Users, error) {
 	var user Users
 	user, err := lib.UsersRowScan(lib.db.QueryRow(`SELECT `+AllUserArgs+` FROM Userlist WHERE id = ?`, userid))
@@ -257,7 +268,7 @@ func (lib *Library) IdentifyUser(userid, password string) (Users, error) {
 	return user, err
 }
 
-// IdentifyUser : to identify the user
+// ModifyPassword : to modify user's password
 func (lib *Library) ModifyPassword(userid, password string) error {
 	_, err := lib.db.Exec(`UPDATE Userlist SET password = ? WHERE id = ?`, password, userid)
 	if err != nil {
@@ -305,7 +316,7 @@ func (lib *Library) AddBook(bookTitle, bookISBN, bookAuthor, bookPublisher strin
 
 // RemoveBook : remove a book from the library
 // if an admin lost the book, he or she can just run this function and add an info
-// if a student lost the book, the borrow record must be modified as well
+// if a student lost the book, the borrow record must be modified before remove it
 // require book's ISBN and the remove reason
 func (lib *Library) RemoveBook(bookISBN, bookRemoveInfo string) (int, error) {
 	var stock int
@@ -418,9 +429,22 @@ func (lib *Library) QueryBookISBN(keyISBN string) ([]Books, error) {
 // book need to be returned in one month unless extended
 // require book's ISBN, user's ID, and borrowDate
 func (lib *Library) BorrowBook(bookISBN, userID string, borrowDate time.Time) error {
+	var recordID int
+	row := lib.db.QueryRow(`SELECT record_id FROM Recordlist WHERE book_id = ? AND user_id = ? AND IsReturned = 0`,
+		bookISBN, userID)
+	err := row.Scan(&recordID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Println("check whether borrowed", err)
+		return err
+	}
+	if err == nil {
+		log.Println(ErrAlreadyBorrowed)
+		return ErrAlreadyBorrowed
+	}
+
 	var availableAmount, stock int
-	row := lib.db.QueryRow(`SELECT stock, available FROM Booklist WHERE ISBN = ? AND stock > 0`, bookISBN)
-	err := lib.CheckBookISBN(row.Scan(&stock, &availableAmount))
+	row = lib.db.QueryRow(`SELECT stock, available FROM Booklist WHERE ISBN = ? AND stock > 0`, bookISBN)
+	err = lib.CheckBookISBN(row.Scan(&stock, &availableAmount))
 	if err != nil {
 		log.Println(err)
 		return err
@@ -433,19 +457,6 @@ func (lib *Library) BorrowBook(bookISBN, userID string, borrowDate time.Time) er
 	if availableAmount <= 0 {
 		log.Println(ErrBookNotAvailable)
 		return ErrBookNotAvailable
-	}
-
-	var recordID int
-	row = lib.db.QueryRow(`SELECT record_id FROM Recordlist WHERE book_id = ? AND user_id = ? AND IsReturned = 0`,
-		bookISBN, userID)
-	err = row.Scan(&recordID)
-	if err != nil && err != sql.ErrNoRows {
-		log.Println("check whether borrowed", err)
-		return err
-	}
-	if err == nil {
-		log.Println(ErrAlreadyBorrowed)
-		return ErrAlreadyBorrowed
 	}
 
 	_, err = lib.db.Exec(`UPDATE Booklist SET available = available - 1 WHERE ISBN = ?`, bookISBN)
@@ -813,16 +824,22 @@ func (lib *Library) PrintUnreturned(records []Records) {
 				recordID      string
 				ISBN    string
 				Title     string
+				ExtendTimes int
 				BorrowDate string
 				Deadline string
 	}
 	var res []data
 	for _, now := range records {
 		Title, _ := lib.QueryBookISBN(now.bookID)
-		res = append(res, data{now.recordID, now.bookID, Title[0].Title, now.borrowDate.Format(timeTemplate), now.deadline.Format(timeTemplate)})
+		res = append(res, data{now.recordID, now.bookID, Title[0].Title, now.extendTimes, now.borrowDate.Format(timeTemplate), now.deadline.Format(timeTemplate)})
 	}
-	t := table.Table(res)
-	fmt.Println(t)
+	
+	if len(res) != 0{
+		t := table.Table(res)
+		fmt.Println(t)
+	}else{
+		fmt.Println("No unreturned book.")
+	}
 }
 
 // PrintHistory : print users' history with return date
@@ -835,6 +852,7 @@ func (lib *Library) PrintHistory(records []Records, sign error) {
 				ISBN    string
 				Title     string
 				IsReturned bool
+				ExtendTimes int
 				BorrowDate string
 				ReturnDate string
 	}
@@ -845,9 +863,9 @@ func (lib *Library) PrintHistory(records []Records, sign error) {
 		if !now.returnDate.Valid{
 			tmp = "NULL"
 		} else {
-			tmp = fmt.Sprintf("%v", now.returnDate.Time)
+			tmp = now.returnDate.Time.Format(timeTemplate)
 		}
-		ss = append(ss,	data{now.recordID, now.bookID, Title[0].Title, now.IsReturned, now.borrowDate.Format(timeTemplate), tmp})
+		ss = append(ss,	data{now.recordID, now.bookID, Title[0].Title, now.IsReturned, now.extendTimes, now.borrowDate.Format(timeTemplate), tmp})
 	}
 
 	t := table.Table(ss)
@@ -871,8 +889,9 @@ func (lib *Library) Servetime(user Users) {
 		input = lib.GetInputString("")
 		if input == "exit" {
 			return
-		}
-		if input == "title" {
+		} else if input == "help" {
+			fmt.Println(help)
+		} else if input == "title" {
 			book.Title = lib.GetInputString("BookTitle: ")
 			res, err := lib.QueryBookTitle(book.Title)
 			if err == nil {
@@ -1030,7 +1049,7 @@ func main() {
 	fmt.Println("Welcome to the Library Management System!")
 	fmt.Println("Type \"help\" for more information.")
 	s, _ := ioutil.ReadFile("readme.txt")
-	file := string(s)
+	help = string(s)
 
 	var lib Library
 	var input string
@@ -1044,7 +1063,7 @@ func main() {
 		if input == "exit" {
 			break
 		} else if input == "help" {
-			fmt.Println(file)
+			fmt.Println(help)
 		} else if input == "login" {
 			var username, password string
 			username = lib.GetInputString("Username: ")

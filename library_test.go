@@ -143,10 +143,9 @@ func TestAddBook(t *testing.T) {
 		{`978-0062820181`, `Magnolia Table, Volume 2: A Collection of Recipes for Gathering`, `Joanna Gaines`, `William Morrow Cookbooks (April 7, 2020)`, 3, 3},
 		{`978-1984822185`, `Normal People: A Novel`, `Sally Rooney`, `Hogarth; Reprint edition (February 18, 2020)`, 1, 1},
 		{`978-0385545938`, `Camino Winds`, `John Grisham`, `Doubleday (April 28, 2020)`, 3, 3},
-		{`978-1492032649`, `Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow: Concepts, Tools, and Techniques to Build Intelligent Systems 2nd Edition`, `Aurélien Géron`, `O'Reilly Media; 2 edition (October 15, 2019)`, 4, 4},
-		{`978-0134123837`, `Computer Systems: A Programmer's Perspective plus Mastering Engineering with Pearson eText -- Access Card Package (3rd Edition)`, `Randal E. Bryant, David R. O'Hallaron`, `Pearson; 3 edition (July 6, 2015)`, 1, 1},
-		{`978-0262033848`, `Introduction to Algorithms, 3rd Edition (The MIT Press) `, `Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest , Clifford Stein`, `The MIT Press; 3rd edition (July 31, 2009)`, 2, 2},
-		{`978-0134123837`, `Computer Systems: A Programmer's Perspective plus Mastering Engineering with Pearson eText -- Access Card Package (3rd Edition)`, ` Randal E. Bryant, David R. O'Hallaron`, `Pearson; 3 edition (July 6, 2015)`, 3, 4},
+		{`978-0134123837`, `Computer Systems: A Programmer's Perspective (3rd Edition)`, `Randal E. Bryant, David R. O'Hallaron`, `Pearson; 3 edition (July 6, 2015)`, 1, 1},
+		{`978-0262033848`, `Introduction to Algorithms, 3rd Edition`, `Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest , Clifford Stein`, `The MIT Press; 3rd edition (July 31, 2009)`, 2, 2},
+		{`978-0134123837`, `Computer Systems: A Programmer's Perspective (3rd Edition)`, ` Randal E. Bryant, David R. O'Hallaron`, `Pearson; 3 edition (July 6, 2015)`, 3, 4},
 		{`978-0395680902`, `Eye of the Elephant Pa`, `Delia Owens`, `Mariner (October 29, 1993)`, 2, 2},
 	}
 
@@ -319,7 +318,7 @@ func TestCheckDeadline(t *testing.T) {
 	}{
 		{0, `978-0134123837`, `18307130018`, nil},
 		{1, `978-1234567890`, `18307130018`, ErrBookNotExists},
-		{2, `978-1492032649`, `18307130018`, ErrNotBorrowed},
+		{2, `978-0385545938`, `18307130018`, ErrNotBorrowed},
 	}
 
 	for _, tt := range tests {
